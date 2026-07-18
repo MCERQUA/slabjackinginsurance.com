@@ -3,6 +3,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { CheckCircle, ArrowLeft, Phone, Shield } from "lucide-react";
 
+const WEBHOOK_URL = `https://josh.jam-bot.com/social-api/api/leads/webhook/netlify?tenant=josh&site=slabjackinginsurance.com`;
+
 export default function QuotePage() {
   const [submitted, setSubmitted] = useState(false);
   const [step, setStep] = useState(1);
@@ -76,9 +78,12 @@ export default function QuotePage() {
             name="quote"
             data-netlify="true"
             method="POST"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               const form = e.target as HTMLFormElement;
+              try {
+                await fetch(WEBHOOK_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ form_name: "quote", source: "slabjackinginsurance.com", ...Object.fromEntries(new FormData(form).entries()) }) });
+              } catch {}
               fetch("/", {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
