@@ -84,7 +84,7 @@ export default function QuotePage() {
               try {
                 await fetch(WEBHOOK_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ form_name: "quote", source: "slabjackinginsurance.com", ...Object.fromEntries(new FormData(form).entries()) }) });
               } catch {}
-              fetch("/", {
+              fetch("/__forms.html", {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 body: new URLSearchParams(new FormData(form) as unknown as Record<string, string>).toString(),
