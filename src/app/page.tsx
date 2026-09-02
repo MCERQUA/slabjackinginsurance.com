@@ -545,46 +545,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* TESTIMONIALS */}
-      <section className="py-24 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-3xl md:text-4xl font-heading text-slate-900 mb-4">
-              What Contractors Say
-            </h2>
-          </motion.div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((t, i) => (
-              <motion.div
-                key={t.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100"
-              >
-                <div className="flex gap-1 mb-4">
-                  {Array.from({ length: t.stars }).map((_, j) => (
-                    <Star key={j} className="w-5 h-5 text-earth-400 fill-earth-400" />
-                  ))}
-                </div>
-                <p className="text-slate-700 leading-relaxed mb-4 italic">&ldquo;{t.quote}&rdquo;</p>
-                <div>
-                  <div className="font-semibold text-slate-900">{t.name}</div>
-                  <div className="text-slate-500 text-sm">{t.company}</div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* FAQ */}
       <section className="py-24 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
