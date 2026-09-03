@@ -7,6 +7,7 @@ const WEBHOOK_URL = `https://josh.jam-bot.com/social-api/api/leads/webhook/netli
 
 export default function QuotePage() {
   const [submitted, setSubmitted] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [step, setStep] = useState(1);
 
   if (submitted) {
@@ -81,16 +82,23 @@ export default function QuotePage() {
             onSubmit={async (e) => {
               e.preventDefault();
               const form = e.target as HTMLFormElement;
+              // A lead is captured if EITHER delivery channel ACCEPTED it. Both are
+              // awaited and checked explicitly - fetch() does not reject on a 4xx/5xx.
+              let captured = false;
               try {
-                await fetch(WEBHOOK_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ form_name: "quote", source: "slabjackinginsurance.com", ...Object.fromEntries(new FormData(form).entries()) }) });
+                const res1 = await fetch(WEBHOOK_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ form_name: "quote", source: "slabjackinginsurance.com", ...Object.fromEntries(new FormData(form).entries()) }) });
+                captured = res1.ok || captured;
               } catch {}
-              fetch('/__forms.html', {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams(new FormData(form) as unknown as Record<string, string>).toString(),
-              })
-                .then(() => setSubmitted(true))
-                .catch(() => setSubmitted(true));
+              try {
+                const res2 = await fetch('/__forms.html', {
+                  method: "POST",
+                  headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                  body: new URLSearchParams(new FormData(form) as unknown as Record<string, string>).toString(),
+                });
+                captured = res2.ok || captured;
+              } catch {}
+              setFailed(!captured);
+              setSubmitted(captured);
             }}
           >
             <input type="hidden" name="form-name" value="quote" />
@@ -235,6 +243,13 @@ export default function QuotePage() {
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Additional Notes</label>
                   <textarea name="message" rows={4} className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent resize-none" placeholder="Current carrier, upcoming renewal date, specific coverage questions, or anything else we should know..." />
                 </div>
+                {failed && (
+                  <div role="alert" className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+                    That did not send &mdash; your details are still here, nothing was lost. Please try
+                    again, or call us at{" "}
+                    <a href="tel:8449675247" className="font-semibold underline">844-967-5247</a>.
+                  </div>
+                )}
                 <div className="flex gap-3">
                   <button type="button" onClick={() => setStep(2)} className="flex-1 border border-slate-300 text-slate-700 py-3.5 rounded-xl font-semibold hover:bg-slate-50 transition-colors">
                     ← Back
