@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { CheckCircle, ArrowLeft, Phone, Shield } from "lucide-react";
 
@@ -9,6 +9,17 @@ export default function QuotePage() {
   const [submitted, setSubmitted] = useState(false);
   const [failed, setFailed] = useState(false);
   const [step, setStep] = useState(1);
+  // Steps 1 and 2 are unmounted once the user moves on, so a FormData built at
+  // submit time would see only step 3. Snapshot each step before leaving it.
+  const formRef = useRef<HTMLFormElement>(null);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const goToStep = (next: number) => {
+    if (formRef.current) {
+      const seen = Object.fromEntries(new FormData(formRef.current).entries()) as Record<string, string>;
+      setAnswers((prev) => ({ ...prev, ...seen }));
+    }
+    setStep(next);
+  };
 
   if (submitted) {
     return (
@@ -76,24 +87,30 @@ export default function QuotePage() {
           </div>
 
           <form
+            ref={formRef}
             name="quote"
             data-netlify="true"
             method="POST"
             onSubmit={async (e) => {
               e.preventDefault();
               const form = e.target as HTMLFormElement;
+              // merged: everything captured on earlier steps + whatever is mounted now
+              const payload: Record<string, string> = {
+                ...answers,
+                ...(Object.fromEntries(new FormData(form).entries()) as Record<string, string>),
+              };
               // A lead is captured if EITHER delivery channel ACCEPTED it. Both are
               // awaited and checked explicitly - fetch() does not reject on a 4xx/5xx.
               let captured = false;
               try {
-                const res1 = await fetch(WEBHOOK_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ form_name: "quote", source: "slabjackinginsurance.com", ...Object.fromEntries(new FormData(form).entries()) }) });
+                const res1 = await fetch(WEBHOOK_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ form_name: "quote", source: "slabjackinginsurance.com", ...payload }) });
                 captured = res1.ok || captured;
               } catch {}
               try {
                 const res2 = await fetch('/__forms.html', {
                   method: "POST",
                   headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                  body: new URLSearchParams(new FormData(form) as unknown as Record<string, string>).toString(),
+                  body: new URLSearchParams(payload).toString(),
                 });
                 captured = res2.ok || captured;
               } catch {}
@@ -126,7 +143,7 @@ export default function QuotePage() {
                     <input name="email" type="email" required className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent" placeholder="john@company.com" />
                   </div>
                 </div>
-                <button type="button" onClick={() => setStep(2)} className="w-full bg-brand-700 text-white py-3.5 rounded-xl font-bold hover:bg-brand-800 transition-colors">
+                <button type="button" onClick={() => goToStep(2)} className="w-full bg-brand-700 text-white py-3.5 rounded-xl font-bold hover:bg-brand-800 transition-colors">
                   Continue →
                 </button>
               </div>
@@ -215,10 +232,10 @@ export default function QuotePage() {
                   <input name="states" type="text" className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent" placeholder="e.g., TX, OK, KS, MO" />
                 </div>
                 <div className="flex gap-3">
-                  <button type="button" onClick={() => setStep(1)} className="flex-1 border border-slate-300 text-slate-700 py-3.5 rounded-xl font-semibold hover:bg-slate-50 transition-colors">
+                  <button type="button" onClick={() => goToStep(1)} className="flex-1 border border-slate-300 text-slate-700 py-3.5 rounded-xl font-semibold hover:bg-slate-50 transition-colors">
                     ← Back
                   </button>
-                  <button type="button" onClick={() => setStep(3)} className="flex-1 bg-brand-700 text-white py-3.5 rounded-xl font-bold hover:bg-brand-800 transition-colors">
+                  <button type="button" onClick={() => goToStep(3)} className="flex-1 bg-brand-700 text-white py-3.5 rounded-xl font-bold hover:bg-brand-800 transition-colors">
                     Continue →
                   </button>
                 </div>
@@ -251,7 +268,7 @@ export default function QuotePage() {
                   </div>
                 )}
                 <div className="flex gap-3">
-                  <button type="button" onClick={() => setStep(2)} className="flex-1 border border-slate-300 text-slate-700 py-3.5 rounded-xl font-semibold hover:bg-slate-50 transition-colors">
+                  <button type="button" onClick={() => goToStep(2)} className="flex-1 border border-slate-300 text-slate-700 py-3.5 rounded-xl font-semibold hover:bg-slate-50 transition-colors">
                     ← Back
                   </button>
                   <button type="submit" className="flex-1 bg-brand-700 text-white py-3.5 rounded-xl font-bold hover:bg-brand-800 transition-colors">
