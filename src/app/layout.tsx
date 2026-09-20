@@ -4,6 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://slabjackinginsurance.com"),
+  alternates: { canonical: "/" },
   title: {
     default: "Slabjacking Insurance — Coverage for Mudjacking & Concrete Leveling Contractors",
     template: "%s | Slabjacking Insurance",
