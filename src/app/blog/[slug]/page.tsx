@@ -3,9 +3,31 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getAllPosts, getPostBySlug } from "@/lib/blog";
 import { Calendar, Clock, ArrowLeft, ArrowRight, Phone } from "lucide-react";
+import type { ReactNode } from "react";
 
 export async function generateStaticParams() {
   return getAllPosts().map((post) => ({ slug: post.slug }));
+}
+
+type Block =
+  | { type: "h2"; text: string }
+  | { type: "h3"; text: string }
+  | { type: "ul"; items: string[] }
+  | { type: "ol"; items: string[] }
+  | { type: "table"; header: string[]; rows: string[][] }
+  | { type: "p"; text: string };
+
+// Renders inline markdown (**bold**, `code`) to real JSX instead of stripping the markers.
+function renderInline(text: string): ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, idx) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={idx}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return <code key={idx}>{part.slice(1, -1)}</code>;
+    }
+    return part;
+  });
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -24,10 +46,10 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   const post = getPostBySlug(slug);
   if (!post) notFound();
 
-  const paragraphs = post.content
+  const paragraphs: Block[] = post.content
     .split("\n\n")
     .filter((p) => p.trim())
-    .map((p) => {
+    .map((p): Block => {
       const trimmed = p.trim();
       if (trimmed.startsWith("## ")) return { type: "h2", text: trimmed.slice(3) };
       if (trimmed.startsWith("### ")) return { type: "h3", text: trimmed.slice(4) };
@@ -37,16 +59,39 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           items: trimmed.split("\n").filter((l) => l.startsWith("- ")).map((l) => l.slice(2)),
         };
       }
-      const cleaned = trimmed.replace(/\*\*(.+?)\*\*/g, "$1").replace(/`(.+?)`/g, "$1");
-      return { type: "p", text: cleaned };
+      if (/^\d+\.\s/.test(trimmed)) {
+        return {
+          type: "ol",
+          items: trimmed
+            .split("\n")
+            .filter((l) => /^\d+\.\s/.test(l.trim()))
+            .map((l) => l.trim().replace(/^\d+\.\s/, "")),
+        };
+      }
+      if (trimmed.startsWith("|")) {
+        const lines = trimmed.split("\n").map((l) => l.trim()).filter(Boolean);
+        const parseRow = (l: string) =>
+          l.replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
+        const isSeparator = (l: string) => /^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?$/.test(l);
+        const header = parseRow(lines[0]);
+        const rows = lines.slice(1).filter((l) => !isSeparator(l)).map(parseRow);
+        return { type: "table", header, rows };
+      }
+      return { type: "p", text: trimmed };
     });
+
+  // Most posts are bylined to a person ("Josh Cotner, Contractors Choice Agency"); a few
+  // (like this one) are signed by the agency itself with no personal name attached.
+  const authorType = /^(the )?contractors choice agency$/i.test(post.author.trim())
+    ? "Organization"
+    : "Person";
 
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
     headline: post.title,
     description: post.description,
-    author: { "@type": "Person", name: post.author },
+    author: { "@type": authorType, name: post.author },
     datePublished: post.date,
     publisher: {
       "@type": "Organization",
@@ -95,16 +140,53 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
               if (block.type === "h3") {
                 return <h3 key={i} className="text-xl font-heading text-slate-800 mt-8 mb-3">{block.text}</h3>;
               }
-              if (block.type === "ul" && block.items) {
+              if (block.type === "ul") {
                 return (
                   <ul key={i} className="my-4 space-y-2 pl-6">
                     {block.items.map((item, j) => (
-                      <li key={j} className="text-slate-600 text-base leading-relaxed list-disc">{item}</li>
+                      <li key={j} className="text-slate-600 text-base leading-relaxed list-disc">{renderInline(item)}</li>
                     ))}
                   </ul>
                 );
               }
-              return <p key={i} className="text-slate-600 leading-relaxed mb-4 text-base">{block.text}</p>;
+              if (block.type === "ol") {
+                return (
+                  <ol key={i} className="my-4 space-y-2 pl-6 list-decimal">
+                    {block.items.map((item, j) => (
+                      <li key={j} className="text-slate-600 text-base leading-relaxed">{renderInline(item)}</li>
+                    ))}
+                  </ol>
+                );
+              }
+              if (block.type === "table") {
+                return (
+                  <div key={i} className="my-6 overflow-x-auto">
+                    <table className="w-full border-collapse text-sm">
+                      <thead>
+                        <tr className="bg-brand-50">
+                          {block.header.map((h, hi) => (
+                            <th key={hi} className="border border-slate-200 px-4 py-2 text-left font-semibold text-slate-900">
+                              {renderInline(h)}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {block.rows.map((row, ri) => (
+                          <tr key={ri} className="even:bg-slate-50">
+                            {row.map((cell, ci) => (
+                              <td key={ci} className="border border-slate-200 px-4 py-2 text-slate-600 align-top">
+                                {renderInline(cell)}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              }
+              return <p key={i} className="text-slate-600 leading-relaxed mb-4 text-base">{renderInline(block.text)}</p>;
             })}
           </article>
         </div>
