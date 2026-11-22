@@ -215,10 +215,6 @@ export default function QuotePage() {
                     <input name="prior-carrier-name" type="text" required className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent" placeholder="Carrier name" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Current or Prior Policy Number *</label>
-                    <input name="prior-policy-number" type="text" required className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent" placeholder="Policy number" />
-                  </div>
-                  <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Policy Expiration Date *</label>
                     <input name="prior-policy-expiration" type="date" required className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent" />
                   </div>
